@@ -86,9 +86,6 @@ Resources:
       InstanceType: !Ref InstanceType
       IamInstanceProfile: !Ref JenkinsInstanceProfile
       KeyName: !Ref KeyName
-      SecurityGroupIds: 
-        - 
-          !GetAtt JenkinsSecurityGroup.GroupId
       # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/finding-an-ami.html
       ImageId: ami-0080e4c5bc078760e
       NetworkInterfaces: 
@@ -100,11 +97,14 @@ Resources:
       UserData: 
         Fn::Base64: |
           #!/bin/bash
-          sudo yum update –y
-          sudo wget -O /etc/yum.repos.d/jenkins.repo http://pkg.jenkinsci.org/redhat/jenkins.repo
-          sudo rpm --import https://pkg.jenkins.io/redhat/jenkins.io.key
-          sudo yum install jenkins -y
-          sudo service jenkins start
+          yum update -y
+          yum remove java-1.7.0-openjdk -y
+          yum install java-1.8.0 -y
+          wget -O /etc/yum.repos.d/jenkins.repo http://pkg.jenkins-ci.org/redhat-stable/jenkins.repo
+          rpm --import http://pkg.jenkins-ci.org/redhat-stable/jenkins-ci.org.key
+          yum install jenkins -y
+          service jenkins start
+          chkconfig jenkins on
       Tags:
         - 
           Key: Name
