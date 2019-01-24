@@ -89,8 +89,6 @@ Resources:
       SecurityGroupIds: 
         - 
           !GetAtt JenkinsSecurityGroup.GroupId
-      SubnetId:
-          Ref: EC2SubnetId
       # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/finding-an-ami.html
       ImageId: ami-0080e4c5bc078760e
       NetworkInterfaces: 
