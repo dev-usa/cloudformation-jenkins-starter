@@ -1,0 +1,114 @@
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - 
+        Label: 
+          default: "EC2 Configuration"
+        Parameters: 
+          - VpcId
+          - EC2SubnetId
+          - KeyName
+          - InstanceType
+    ParameterLabels:
+      VpcId: 
+        default: Security Group VPC Id
+      EC2SubnetId:
+        default: EC2 instance Subnet
+      KeyName:
+        default: Instance Key Pair
+Parameters:
+  VpcId:
+    Description: Select a VPC Id where the security group should be created
+    Type: AWS::EC2::VPC::Id
+  EC2SubnetId:
+    Description: Subnet where EC2 instance should be launched
+    Type: AWS::EC2::Subnet::Id
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t1.micro
+    AllowedValues:
+    - t1.micro
+    - t2.nano
+    - t2.micro
+    - t2.small
+    - t2.medium
+Resources:
+  JenkinsRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      RoleName: jenkins-role
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Effect: "Allow"
+            Principal: 
+              Service: 
+                - "ec2.amazonaws.com"
+            Action: 
+              - "sts:AssumeRole"
+  JenkinsInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: jenkins-instance-profile
+      Roles: 
+        - Ref: JenkinsRole
+  JenkinsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupName: jenkins-temp-sg
+      GroupDescription: Security group for Jenkins access
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow access to the world
+          IpProtocol: -1
+          FromPort: 0
+          ToPort: 65536
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow access to the world
+          IpProtocol: -1
+          FromPort: 0
+          ToPort: 65536
+      VpcId: !Ref VpcId
+      Tags:
+        - 
+          Key: Name
+          Value: jenkins-temp-sg
+  JenkinsEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties: 
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref JenkinsInstanceProfile
+      KeyName: !Ref KeyName
+      SecurityGroupIds: 
+        - 
+          !GetAtt JenkinsSecurityGroup.GroupId
+      SubnetId:
+          Ref: EC2SubnetId
+      # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/finding-an-ami.html
+      ImageId: ami-0080e4c5bc078760e
+      NetworkInterfaces: 
+      - AssociatePublicIpAddress: "true"
+        DeviceIndex: "0"
+        GroupSet: 
+          - !Ref JenkinsSecurityGroup
+        SubnetId: !Ref EC2SubnetId
+      UserData: 
+        Fn::Base64: |
+          #!/bin/bash
+          sudo yum update –y
+          sudo wget -O /etc/yum.repos.d/jenkins.repo http://pkg.jenkinsci.org/redhat/jenkins.repo
+          sudo rpm --import https://pkg.jenkins.io/redhat/jenkins.io.key
+          sudo yum install jenkins -y
+          sudo service jenkins start
+      Tags:
+        - 
+          Key: Name
+          Value: jenkins
+      
